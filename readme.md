@@ -24,15 +24,13 @@ Spring Batch是Spring的一个批处理框架。而批处理作业的一个原�
 
 # 为什么使用Spring Cloud Task
 
-
+所谓任务，无非是一段程序，写在main方法中不也能执行吗？那么Spring Cloud Task的优势在哪？
 > 所以有必要先介绍一下：spring cloud task使用CommandLineRunner或ApplicationRunner定义任务的业务逻辑（以下统称为runner），但spring cloud task的task和runner不是对等的，并不是一个runner是一个task，而是整个Application是一个task。而一个Application可以定义任意多个runner。
 
 > 更为有趣的是，runner接口定义在spring boot中，不在spring cloud task。即便只引入spring boot依赖，而不引入spring cloud task，启动spring boot，runner也能够得到执行。
 
 > 可见runner的执行是spring boot完成的，那么spring cloud task的工作并不是执行runner，而是：
 
-
-所谓任务，无非是一段程序，写在main方法中不也能执行吗？那么Spring Cloud Task的优势在哪？
 Spring Cloud Task的优势：
 1. 提供了Task全生命周期的管理。(启动时要做什么，结束时要做什么，抛异常了怎么办；开始时间，结束时间，是否正常结束...)
 2. 生命周期任务执行情况写入数据库，供之后分析，可追踪
