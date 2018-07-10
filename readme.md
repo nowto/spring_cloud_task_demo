@@ -342,5 +342,7 @@ Spring Cloud Task的优势：
 2. 运行
     `mvn spring-boot:run` 或执行main方法
     输出日志：
-    ![](https://raw.githubusercontent.com/nowto/spring_cloud_task_demo/master/log.png)
+    
+    ![sdf](/log.png)
+    
     从日志也可以看出，并不是每个runner的开始和结束之前打印监听器的监听语句，而是所有runner被视为一个task。    
