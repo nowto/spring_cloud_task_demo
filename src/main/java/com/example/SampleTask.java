@@ -6,6 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.task.configuration.EnableTask;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.EnableMBeanExport;
 
 import java.net.UnknownHostException;
 import java.sql.SQLException;
@@ -36,6 +37,16 @@ public class SampleTask {
         return new HelloWorldCommandLineRunner();
     }
 
+    @Bean
+    public CommandLineRunner secondRunner() {
+        return new CommandLineRunner() {
+            @Override
+            public void run(String... args) throws Exception {
+                System.out.println("second.....");
+            }
+        };
+    }
+
     /**
      * task 的实现
      * 任务的状态会被spring cloud task做记录
@@ -63,7 +74,7 @@ public class SampleTask {
         @Override
         public void run(String... args) throws Exception {
 
-            throw new IllegalArgumentException("");
+            System.out.println("Hello World!");
         }
 
     }
