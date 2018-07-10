@@ -1,11 +1,10 @@
 package com.example;
 
-import org.springframework.boot.CommandLineRunner;
-import org.springframework.boot.ExitCodeExceptionMapper;
-import org.springframework.boot.SpringApplication;
+import org.springframework.boot.*;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.task.configuration.EnableTask;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.annotation.Order;
 
 import java.net.UnknownHostException;
 import java.sql.SQLException;
@@ -31,20 +30,27 @@ public class SampleTask {
      *
      * @return CommandLineRunner
      */
-    @Bean
-    public CommandLineRunner commandLineRunner() {
-        return new HelloWorldCommandLineRunner();
-    }
-
-    @Bean
-    public CommandLineRunner secondRunner() {
-        return new CommandLineRunner() {
-            @Override
-            public void run(String... args) throws Exception {
-                System.out.println("second.....");
+            @Bean
+            @Order(2)
+            public CommandLineRunner commandLineRunner() {
+                return new CommandLineRunner() {
+                    @Override
+                    public void run(String... args) throws Exception {
+                        System.out.println("CommandLineRunner运行了");
+                    }
+                };
             }
-        };
-    }
+
+            @Bean
+            @Order(1)
+            public ApplicationRunner secondRunner() {
+                return new ApplicationRunner() {
+                    @Override
+                    public void run(ApplicationArguments args) throws Exception {
+                        System.out.println("ApplicationRunner运行了");
+                    }
+                };
+            }
 
     /**
      * task 的实现
@@ -75,7 +81,7 @@ public class SampleTask {
         @Override
         public void run(String... args) throws Exception {
 
-            System.out.println("Hello World!");
+            System.out.println(this.getClass().getName()+ "运行了");
         }
 
     }

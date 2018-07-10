@@ -161,24 +161,31 @@ Spring Cloud Task的优势：
          * 在spring cloud task中task的执行体，是CommandLineRunner或ApplicationRunner接口的实现，
          * 类似于Thread的执行体是Runnable接口的实现
          * <p>
-         * 这里使用CommandLineRunner举例，有了@EnableTask注解，容器中的'*Runner'Bean会被spring cloud task发现并作为任务执行
-         *
+         * 这里使用CommandLineRunner举例
+         * Runner的执行顺序默认按照注册的顺序，如果希望不按照注册的顺序，可以加@Order注解
          * @return CommandLineRunner
          */
-        @Bean
-        public CommandLineRunner commandLineRunner() {
-            return new HelloWorldCommandLineRunner();
-        }
+            @Bean
+            @Order(2)
+            public CommandLineRunner commandLineRunner() {
+                return new CommandLineRunner() {
+                    @Override
+                    public void run(String... args) throws Exception {
+                        System.out.println("CommandLineRunner运行了");
+                    }
+                };
+            }
 
-        @Bean
-        public CommandLineRunner secondRunner() {
-            return new CommandLineRunner() {
-                @Override
-                public void run(String... args) throws Exception {
-                    System.out.println("second.....");
-                }
-            };
-        }
+            @Bean
+            @Order(1)
+            public ApplicationRunner secondRunner() {
+                return new ApplicationRunner() {
+                    @Override
+                    public void run(ApplicationArguments args) throws Exception {
+                        System.out.println("ApplicationRunner运行了");
+                    }
+                };
+            }
 
         /**
          * task 的实现
@@ -196,7 +203,7 @@ Spring Cloud Task的优势：
          * arguments： 参数
          * @see org.springframework.cloud.task.repository.TaskExecution
          */
-        public static class HelloWorldCommandLineRunner implements CommandLineRunner {
+        public static cleass HelloWorldCommandLineRunner implements CommandLineRunner {
 
             /**
              * 任务执行体
