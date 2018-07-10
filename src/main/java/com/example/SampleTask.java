@@ -60,6 +60,8 @@ public class SampleTask {
      * //TODO externalExecutionId： 暂时不懂
      * errorMessage： 错误消息
      * arguments： 参数
+     *
+     * @see org.springframework.cloud.task.repository.TaskExecution
      */
     public static class HelloWorldCommandLineRunner implements CommandLineRunner {
 

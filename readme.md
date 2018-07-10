@@ -34,4 +34,294 @@ Spring Cloud Task的优势：
 1. Spring Cloud Task没有调度自身任务的功能，要任务得到执行，需要手动执行，或使用调度框架或消息驱动框架，例如Spring Cloud Sream，Spring Cloud Deployer，Quartz，cron。
 2. 任务与任务之间是独立的，没有编排能力
 
+# DEMO创建
+1. 创建SpingBoot项目
+2. MAVEN依赖
+    ```xml
+    <?xml version="1.0" encoding="UTF-8"?>
+    <project xmlns="http://maven.apache.org/POM/4.0.0" 
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
+        <modelVersion>4.0.0</modelVersion>
+
+        <groupId>com.example</groupId>
+        <artifactId>taskdemo</artifactId>
+        <packaging>jar</packaging>
+        <version>0.0.1-SNAPSHOT</version>
+
+        <parent>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-parent</artifactId>
+            <version>1.5.2.RELEASE</version>
+        </parent>
+
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter</artifactId>
+            </dependency>
+            <!-- spring cloud task 依赖 -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-starter-task</artifactId>
+                <version>1.2.3.RELEASE</version>
+            </dependency>
+            <!-- 生命周期状态会写入数据库，所以需要数据库相关依赖 -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter-data-jpa</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>mysql</groupId>
+                <artifactId>mysql-connector-java</artifactId>
+            </dependency>
+        </dependencies>
+
+        <!-- 引入spring cloud 依赖管理 -->
+        <dependencyManagement>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-dependencies</artifactId>
+                    <version>Finchley.RELEASE</version>
+                    <type>pom</type>
+                    <scope>import</scope>
+                </dependency>
+            </dependencies>
+        </dependencyManagement>
+
+        <!-- spring boot插件，提供spring-boot:run等目标 -->
+        <build>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                </plugin>
+            </plugins>
+        </build>
+    </project>
+    ```
+1. 配置application.properties
+    ```properties
+    # task日志级别，开发阶段可以设为debug
+    logging.level.org.springframework.cloud.task=DEBUG
+    # 应用名称，默认任务会使用应用名称作为任务名
+    spring.application.name=helloWorld
+
+    # 如果需要将任务执行周期状态记录数据库，须配置数据源，否则只是记录到内存的一个Map
+    spring.datasource.driver-class-name=com.mysql.jdbc.Driver
+    spring.datasource.username=root
+    spring.datasource.password=root
+    spring.datasource.url=jdbc:mysql:///test
+    #spring.jpa.database=MySQL
+    #spring.jpa.show-sql=true
+    #spring.jpa.generate-ddl=true
+    #spring.jpa.hibernate.ddl-auto=update
+
+    # 任务表表名前缀，可以不配，默认"TASK_"，如果需要同一数据库中多个任务表，必须配置该项
+    # spring.cloud.task.tablePrefix=TASKDEMO_
+
+    # 配置是让spring创建任务表，还是自己创建。为true是spring创建。默认为true
+    spring.cloud.task.initialize.enable=true
+
+    # 配置任务名称 默认是spring.application.name
+    spring.cloud.task.name=helloworld
+
+    # 用来配置同名task是否可以并发执行。如果为true，拒绝并发任务将会失败，失败信息为"Task with name "xxxx" is already running."
+    # 默认值：false
+    # 要使该配置生效，需添加如下依赖
+    #<dependency>
+    #    <groupId>org.springframework.integration</groupId>
+    #    <artifactId>spring-integration-core</artifactId>
+    #</dependency>
+    #<dependency>
+    #    <groupId>org.springframework.integration</groupId>
+    #    <artifactId>spring-integration-jdbc</artifactId>
+    #</dependency>
+    # spring.cloud.task.singleInstanceEnabled=false
+    ```
+
+1. 编写Application
+    ```java
+
+    /**
+     * SampleTask
+     *
+     * @EnableTask 注解开启SpringBoot对spring cloud task的支持
+     */
+    @SpringBootApplication
+    @EnableTask
+    public class SampleTask {
+
+        public static void main(String[] args) {
+            SpringApplication.run(SampleTask.class, args);
+        }
+
+        /**
+         * 在spring cloud task中task的执行体，是CommandLineRunner或ApplicationRunner接口的实现，
+         * 类似于Thread的执行体是Runnable接口的实现
+         * <p>
+         * 这里使用CommandLineRunner举例，有了@EnableTask注解，容器中的'*Runner'Bean会被spring cloud task发现并作为任务执行
+         *
+         * @return CommandLineRunner
+         */
+        @Bean
+        public CommandLineRunner commandLineRunner() {
+            return new HelloWorldCommandLineRunner();
+        }
+
+        @Bean
+        public CommandLineRunner secondRunner() {
+            return new CommandLineRunner() {
+                @Override
+                public void run(String... args) throws Exception {
+                    System.out.println("second.....");
+                }
+            };
+        }
+
+        /**
+         * task 的实现
+         * 任务的状态会被spring cloud task做记录
+         * 每个任务包含如下这么多状态：
+         * executionId: 执行id
+         * parentExecutionId: 父task执行id
+         * exitCode： 退出码
+         * taskName: 任务名称
+         * startTime： 开始时间
+         * endTime： 结束时间
+         * exitMessage： 退出消息
+         * //TODO externalExecutionId： 暂时不懂
+         * errorMessage： 错误消息
+         * arguments： 参数
+         * @see org.springframework.cloud.task.repository.TaskExecution
+         */
+        public static class HelloWorldCommandLineRunner implements CommandLineRunner {
+
+            /**
+             * 任务执行体
+             *
+             * @param args task的参数，即启动SpringBoot时传奇给jvm的参数，就是main方法的参数
+             * @throws Exception 任务抛出的异常，可以被spring cloud task映射为退出码(exit code)，无任何异常，退出码为0，有异常根据
+             *                   ExitCodeExceptionMapper这一接口对异常和退出码做映射
+             */
+            @Override
+            public void run(String... args) throws Exception {
+
+                System.out.println("Hello World!");
+            }
+
+        }
+
+        /**
+         * 将异常映射为退出码
+         * NullPointerException
+         * UnknownHostException
+         * SqlException
+         * 分别映射为1,2,3
+         * 其他都为255
+         * @return
+         */
+        @Bean
+        public ExitCodeExceptionMapper exitCodeExceptionMapper() {
+            return new ExitCodeExceptionMapper() {
+                @Override
+                public int getExitCode(Throwable exception) {
+                    Throwable cause = exception.getCause();
+                    if (cause instanceof NullPointerException) {
+                        return 1;
+                    }
+                    if (cause instanceof UnknownHostException) {
+                        return 2;
+                    }
+                    if (cause instanceof SQLException) {
+                        return 3;
+                    }
+                    return 255;
+                }
+            };
+        }
+    }
+    ```
+1. 可以监听task生命周期事件，有两种方式
+    - 实现TaskExecutionListener
+        ```java
+        /**
+         * 任务执行生命周期的监听器，可以针对某个生命周期做些事情
+         *
+         * 如果一个事件的某个监听器抛出了异常，则后续该事件的其他监听器将不会执行
+         * TaskExecution会被存储数据库
+         */
+        @Component
+        public class HelloWorldInterfaceTaskExecutionListener implements TaskExecutionListener {
+            /**
+             * 任务就要启动前
+             * @param taskExecution
+             */
+            @Override
+            public void onTaskStartup(TaskExecution taskExecution) {
+                System.out.println("interface: task startup");
+            }
+
+            /**
+             * 任务将要结束前
+             * @param taskExecution
+             */
+            @Override
+            public void onTaskEnd(TaskExecution taskExecution) {
+                taskExecution.setExitMessage(taskExecution.getTaskName() + "完成了");
+                System.out.println("interface: task end");
+            }
+
+            /**
+             * 任务发生了未捕获的异常
+             * @param taskExecution
+             * @param throwable
+             */
+            @Override
+            public void onTaskFailed(TaskExecution taskExecution, Throwable throwable) {
+                taskExecution.setErrorMessage(taskExecution.getTaskName() + "失败了： " + throwable.getMessage());
+                System.out.println("interface: task failed");
+            }
+        }
+        ```
+    - 使用注解
+        ```java
+        /**
+         * 任务执行生命周期的监听器
+         * 与 <code>HelloWorldInterfaceTaskExecutionListener</code>
+         * 完成功能相同，只不过是以注解的方式
+         */
+        @Component
+        public class HelloWorldAnnotationTaskExecutionListener {
+            /**
+             * 任务就要启动前
+             * @param taskExecution
+             */
+            @BeforeTask
+            public void beforeTask(TaskExecution taskExecution) {
+                System.out.println("annotation: before task");
+            }
+
+            /**
+             * 任务将要结束前
+             * @param taskExecution
+             */
+            @AfterTask
+            public void afterTask(TaskExecution taskExecution) {
+                System.out.println("annotation: after task");
+            }
+
+            /**
+             * 任务发生了未捕获的异常
+             * @param taskExecution
+             * @param throwable
+             */
+            @FailedTask
+            public void failedTask(TaskExecution taskExecution, Throwable throwable) {
+                System.out.println("annotation: failed task");
+            }
+        }
+        ```
+2. 运行
+    `mvn spring-boot:run` 或执行main方法
